@@ -72,6 +72,14 @@ Lean Stats integrates directly inside WordPress Admin:
 - WordPress **6.4+**
 - PHP **8.0+**
 
+## 📦 Build plugin zip
+
+Use the script to generate a distributable plugin archive in `dist/`.
+
+```bash
+npm run build:zip
+```
+
 ## 🗺 Roadmap
 
 - UI improvements & reporting enhancements
