@@ -24,3 +24,12 @@ jobs:
             !.github/**
             !node_modules/**
             !tests/**
+            !docs/**
+            !scripts/**
+            !src/**
+            !package.json
+            !package-lock.json
+            !webpack.config.js
+            !phpcs.xml
+            !phpunit.xml.dist
+            !AGENTS.md
