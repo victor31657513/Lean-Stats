@@ -9,20 +9,18 @@ on:
 jobs:
   build-zip:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create plugin zip
-        run: |
-          zip -r lean-stats.zip . \
-            -x ".git/*" \
-            -x ".github/*" \
-            -x "node_modules/*" \
-            -x "tests/*"
-
-      - name: Upload plugin artifact
+      - name: Upload plugin artifact (single zip)
         uses: actions/upload-artifact@v4
         with:
-          name: lean-stats-plugin
-          path: lean-stats.zip
+          name: lean-stats
+          path: |
+            ./
+            !.git/**
+            !.github/**
+            !node_modules/**
+            !tests/**
