@@ -25,7 +25,6 @@ jobs:
       - name: Install NPM dependencies
         run: npm install
 
-      # Build uniquement (on ne s'appuie pas sur build:zip pour éviter d'embarquer src/tests/docs)
       - name: Build assets
         run: npm run build
 
@@ -87,6 +86,8 @@ jobs:
       - name: Create/Update GitHub Release and upload asset
         env:
           GH_TOKEN: ${{ github.token }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
 
@@ -94,13 +95,20 @@ jobs:
           VERSION="${{ steps.meta.outputs.version }}"
           ZIP="dist/${{ steps.meta.outputs.zip_name }}"
 
+          # Notes de release : on préfère le titre de la PR si dispo, sinon fallback générique
+          if [ -n "${PR_TITLE:-}" ]; then
+            NOTES="PR #${PR_NUMBER:-?} — ${PR_TITLE}"
+          else
+            NOTES="Build automatique Lean Stats ${VERSION}"
+          fi
+
           # Crée la release si elle n’existe pas (gh crée aussi le tag si besoin)
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists, will update asset."
           else
             gh release create "$TAG" \
               --title "Lean Stats $VERSION" \
-              --notes "Build automatique Lean Stats $VERSION"
+              --notes "$NOTES"
           fi
 
           # Upload/replace l'asset
