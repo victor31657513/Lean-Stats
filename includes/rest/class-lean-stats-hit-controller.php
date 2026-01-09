@@ -61,6 +61,14 @@ class Lean_Stats_Hit_Controller {
             );
         }
 
+        if ($this->is_rate_limited($request)) {
+            return new WP_REST_Response(['tracked' => false], 204);
+        }
+
+        if ($this->is_duplicate_hit($hit)) {
+            return new WP_REST_Response(['tracked' => false], 204);
+        }
+
         $this->store_hit($hit);
 
         return new WP_REST_Response(['tracked' => true], 201);
@@ -247,6 +255,89 @@ class Lean_Stats_Hit_Controller {
         ];
 
         return in_array($device_class, $allowed, true) ? $device_class : '';
+    }
+
+    /**
+     * Apply a short deduplication window to identical hits.
+     */
+    private function is_duplicate_hit(array $hit): bool {
+        $ttl = (int) apply_filters('lean_stats_dedupe_ttl', 20);
+        $ttl = max(10, min(30, $ttl));
+
+        $key_parts = [
+            $hit['page_path'],
+            $hit['referrer_domain'] ?? '',
+            $hit['device_class'],
+        ];
+        $cache_key = 'lean_stats_dedupe_' . md5(implode('|', $key_parts));
+
+        if (wp_cache_get($cache_key, 'lean_stats_dedupe') !== false) {
+            return true;
+        }
+
+        if (get_transient($cache_key) !== false) {
+            wp_cache_set($cache_key, 1, 'lean_stats_dedupe', $ttl);
+            return true;
+        }
+
+        wp_cache_set($cache_key, 1, 'lean_stats_dedupe', $ttl);
+        set_transient($cache_key, 1, $ttl);
+
+        return false;
+    }
+
+    /**
+     * Apply a soft rate limit using hashed IPs stored in memory cache.
+     */
+    private function is_rate_limited(WP_REST_Request $request): bool {
+        $ip_address = $this->get_request_ip($request);
+        if ($ip_address === null) {
+            return false;
+        }
+
+        $window = (int) apply_filters('lean_stats_rate_limit_window', 10);
+        $window = max(5, min(60, $window));
+        $max_hits = (int) apply_filters('lean_stats_rate_limit_max', 30);
+        $max_hits = max(1, $max_hits);
+
+        $hash = hash_hmac('sha256', $ip_address, wp_salt('lean_stats_rate_limit'));
+        $cache_key = 'ip_' . $hash;
+
+        $count = wp_cache_get($cache_key, 'lean_stats_rate_limit');
+        if ($count !== false && (int) $count >= $max_hits) {
+            return true;
+        }
+
+        $count = $count === false ? 1 : ((int) $count + 1);
+        wp_cache_set($cache_key, $count, 'lean_stats_rate_limit', $window);
+
+        return false;
+    }
+
+    /**
+     * Extract client IP without persisting it.
+     */
+    private function get_request_ip(WP_REST_Request $request): ?string {
+        $forwarded_for = $request->get_header('X-Forwarded-For');
+        if (is_string($forwarded_for) && $forwarded_for !== '') {
+            $parts = array_map('trim', explode(',', $forwarded_for));
+            foreach ($parts as $part) {
+                if (filter_var($part, FILTER_VALIDATE_IP)) {
+                    return $part;
+                }
+            }
+        }
+
+        $remote_addr = $request->get_header('X-Real-IP');
+        if (is_string($remote_addr) && $remote_addr !== '' && filter_var($remote_addr, FILTER_VALIDATE_IP)) {
+            return $remote_addr;
+        }
+
+        if (!empty($_SERVER['REMOTE_ADDR']) && filter_var($_SERVER['REMOTE_ADDR'], FILTER_VALIDATE_IP)) {
+            return (string) $_SERVER['REMOTE_ADDR'];
+        }
+
+        return null;
     }
 
     /**
