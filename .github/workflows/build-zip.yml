@@ -27,9 +27,11 @@ jobs:
             !docs/**
             !scripts/**
             !src/**
+            !assets/js/__tests__/**
             !package.json
             !package-lock.json
             !webpack.config.js
             !phpcs.xml
             !phpunit.xml.dist
             !AGENTS.md
+
