@@ -59,6 +59,8 @@ Lean Stats is designed to minimize data collection:
 - **Referrer stored as domain only** (no full referrer URLs)
 - **URL cleaning** by default (strip query strings unless allowlisted)
 - **Data retention**: aggregated data kept for reporting; optional short-lived raw logs (if enabled) are limited and purged automatically
+- **Soft rate limiting** uses ephemeral, hashed IPs held in memory cache only; raw IPs are never persisted
+- **Short deduplication window** prevents repeated identical hits within seconds
 - Optional support for **GPC/DNT** signals (configurable)
 
 > Note: Legal requirements vary by jurisdiction and by how a site is configured. Lean Stats is engineered to minimize risk by avoiding common consent-triggering tracking patterns.
