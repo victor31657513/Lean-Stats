@@ -15,7 +15,6 @@ import {
     Notice,
     SelectControl,
     Spinner,
-    TabPanel,
     TextControl,
     ToggleControl,
 } from '@wordpress/components';
@@ -226,6 +225,11 @@ const normalizePanels = (panels) => {
         .filter((panel) => panel.name);
 
     return normalized.length > 0 ? normalized : DEFAULT_PANELS;
+};
+
+const getCurrentPanelTitle = (panelName, panels) => {
+    const match = panels.find((panel) => panel.name === panelName);
+    return match?.title || __('Lean Stats', 'lean-stats');
 };
 
 const getPanelComponent = (name) => {
@@ -672,23 +676,21 @@ const AdminApp = () => {
         );
     }
 
+    const panels = normalizePanels(ADMIN_CONFIG?.panels);
+    const currentPanel = ADMIN_CONFIG?.currentPanel || 'dashboard';
+    const PanelComponent = getPanelComponent(currentPanel);
+    const panelTitle = getCurrentPanelTitle(currentPanel, panels);
+
     return (
         <div style={{ display: 'grid', gap: '16px' }}>
-            <h1>{__('Lean Stats', 'lean-stats')}</h1>
-            <TabPanel tabs={normalizePanels(ADMIN_CONFIG?.panels)}>
-                {(tab) => {
-                    const PanelComponent = getPanelComponent(tab.name);
-                    if (!PanelComponent) {
-                        return (
-                            <Notice status="warning" isDismissible={false}>
-                                {__('Aucun panneau disponible pour cet écran.', 'lean-stats')}
-                            </Notice>
-                        );
-                    }
-
-                    return <PanelComponent panel={tab} />;
-                }}
-            </TabPanel>
+            <h1>{panelTitle}</h1>
+            {!PanelComponent ? (
+                <Notice status="warning" isDismissible={false}>
+                    {__('Aucun panneau disponible pour cet écran.', 'lean-stats')}
+                </Notice>
+            ) : (
+                <PanelComponent panel={{ name: currentPanel, title: panelTitle }} />
+            )}
         </div>
     );
 };

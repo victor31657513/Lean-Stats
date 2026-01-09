@@ -4,7 +4,7 @@ Lean Stats exposes extension points for adding admin panels, REST sources, and a
 
 ## Admin panel extensions
 
-Custom admin panels register a React component on `window.LeanStatsAdminPanels` and declare the panel via the `lean_stats_admin_panels` filter. Panels receive the existing admin shell and render inside the Lean Stats dashboard.
+Custom admin panels register a React component on `window.LeanStatsAdminPanels` and declare the panel via the `lean_stats_admin_panels` filter. Panels render as submenu pages under Lean Stats and reuse the shared admin shell.
 
 ## REST source extensions
 
