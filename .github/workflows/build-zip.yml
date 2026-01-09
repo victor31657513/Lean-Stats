@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-zip:
     runs-on: ubuntu-latest
@@ -33,6 +36,7 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "zip_name=lean-stats-$VERSION.zip" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
 
       # Prépare un dossier "lean-stats/" propre (déployable) et génère le zip versionné dans dist/
       - name: Create deployable plugin zip (clean)
@@ -40,13 +44,11 @@ jobs:
           set -euo pipefail
 
           PLUGIN_SLUG="lean-stats"
-          VERSION="${{ steps.meta.outputs.version }}"
           ZIP_NAME="${{ steps.meta.outputs.zip_name }}"
 
           rm -rf dist package-tmp
           mkdir -p "dist" "package-tmp/${PLUGIN_SLUG}"
 
-          # Copie uniquement ce qui est utile en prod WordPress
           rsync -a --delete \
             --exclude ".git" \
             --exclude ".github" \
@@ -71,13 +73,36 @@ jobs:
           test -f "package-tmp/${PLUGIN_SLUG}/build/admin.asset.php"
 
           (cd package-tmp && zip -r "../dist/${ZIP_NAME}" "${PLUGIN_SLUG}")
-
           echo "Created dist/${ZIP_NAME}"
 
-      # Upload: un seul zip, avec un nom d’artefact explicite (incluant la version)
-      - name: Upload plugin archive
+      # Artifact (debug) : GitHub l'encapsulera toujours dans un zip "artifact"
+      - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: lean-stats-${{ steps.meta.outputs.version }}
           path: dist/${{ steps.meta.outputs.zip_name }}
           if-no-files-found: error
+
+      # Release asset (download direct du zip plugin)
+      - name: Create/Update GitHub Release and upload asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          TAG="${{ steps.meta.outputs.tag }}"
+          VERSION="${{ steps.meta.outputs.version }}"
+          ZIP="dist/${{ steps.meta.outputs.zip_name }}"
+
+          # Crée la release si elle n’existe pas (gh crée aussi le tag si besoin)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists, will update asset."
+          else
+            gh release create "$TAG" \
+              --title "Lean Stats $VERSION" \
+              --notes "Build automatique Lean Stats $VERSION"
+          fi
+
+          # Upload/replace l'asset
+          gh release upload "$TAG" "$ZIP" --clobber
+          echo "Release asset uploaded: $ZIP"
