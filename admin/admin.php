@@ -13,15 +13,54 @@ add_action('admin_enqueue_scripts', 'lean_stats_enqueue_admin_assets');
  */
 function lean_stats_register_admin_menu(): void
 {
-    add_menu_page(
+    $panels = lean_stats_get_admin_panels();
+    if (empty($panels)) {
+        return;
+    }
+
+    $menu_slug = LEAN_STATS_SLUG;
+
+    $top_panel = $panels[0];
+
+    $menu_hook = add_menu_page(
         __('Lean Stats', 'lean-stats'),
         __('Lean Stats', 'lean-stats'),
         'manage_options',
-        LEAN_STATS_SLUG,
+        $menu_slug,
         'lean_stats_render_admin_page',
         'dashicons-chart-area',
         30
     );
+
+    $panel_pages = [];
+    $panel_pages[$menu_slug] = $top_panel['name'] ?? 'dashboard';
+
+    $submenu_hooks = [];
+    foreach ($panels as $panel) {
+        $panel_name = $panel['name'] ?? '';
+        $panel_title = $panel['title'] ?? $panel_name;
+        if ($panel_name === '') {
+            continue;
+        }
+
+        $panel_slug = $panel_name === $panel_pages[$menu_slug] ? $menu_slug : $menu_slug . '-' . $panel_name;
+        $panel_pages[$panel_slug] = $panel_name;
+
+        $submenu_hooks[] = add_submenu_page(
+            $menu_slug,
+            $panel_title,
+            $panel_title,
+            'manage_options',
+            $panel_slug,
+            'lean_stats_render_admin_page'
+        );
+    }
+
+    $lean_stats_admin_pages = array_merge([$menu_hook], $submenu_hooks);
+    $lean_stats_admin_panel_map = $panel_pages;
+
+    $GLOBALS['lean_stats_admin_pages'] = $lean_stats_admin_pages;
+    $GLOBALS['lean_stats_admin_panel_map'] = $lean_stats_admin_panel_map;
 }
 
 /**
@@ -39,9 +78,14 @@ function lean_stats_render_admin_page(): void
  */
 function lean_stats_enqueue_admin_assets(string $hook_suffix): void
 {
-    if ($hook_suffix !== 'toplevel_page_' . LEAN_STATS_SLUG) {
+    $registered_pages = $GLOBALS['lean_stats_admin_pages'] ?? [];
+    if (!in_array($hook_suffix, $registered_pages, true)) {
         return;
     }
+
+    $current_page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : LEAN_STATS_SLUG;
+    $panel_map = $GLOBALS['lean_stats_admin_panel_map'] ?? [];
+    $current_panel = $panel_map[$current_page] ?? 'dashboard';
 
     $asset_file = LEAN_STATS_PATH . 'build/admin.asset.php';
     $asset_data = [
@@ -72,6 +116,7 @@ function lean_stats_enqueue_admin_assets(string $hook_suffix): void
             'panels' => lean_stats_get_admin_panels(),
             'restSources' => lean_stats_get_rest_sources(),
             'features' => lean_stats_features(),
+            'currentPanel' => $current_panel,
             'settings' => [
                 'restNamespace' => LEAN_STATS_REST_NAMESPACE,
                 'restInternalNamespace' => LEAN_STATS_REST_INTERNAL_NAMESPACE,
