@@ -14,13 +14,7 @@ npm --prefix "${repo_root}" run build
 temp_dir="$(mktemp -d)"
 trap 'rm -rf "${temp_dir}"' EXIT
 
-rsync -a --delete \
-  --exclude ".git" \
-  --exclude ".github" \
-  --exclude "dist" \
-  --exclude "node_modules" \
-  --exclude "package-tmp" \
-  "${repo_root}/" "${temp_dir}/${plugin_slug}/"
+"${repo_root}/scripts/build-plugin-dist.sh" "${temp_dir}"
 
 (cd "${temp_dir}" && zip -r "${output_file}" "${plugin_slug}")
 

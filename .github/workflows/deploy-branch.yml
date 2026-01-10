@@ -44,24 +44,7 @@ jobs:
           rm -rf package-tmp
           mkdir -p "package-tmp/${PLUGIN_SLUG}"
 
-          rsync -a --delete \
-            --exclude ".git" \
-            --exclude ".github" \
-            --exclude "node_modules" \
-            --exclude "dist" \
-            --exclude "src" \
-            --exclude "tests" \
-            --exclude "docs" \
-            --exclude "scripts" \
-            --exclude "assets/js/__tests__" \
-            --exclude ".eslintrc.json" \
-            --exclude "phpcs.xml" \
-            --exclude "phpunit.xml.dist" \
-            --exclude "webpack.config.js" \
-            --exclude "AGENTS.md" \
-            --exclude "package.json" \
-            --exclude "package-lock.json" \
-            ./ "package-tmp/${PLUGIN_SLUG}/"
+          ./scripts/build-plugin-dist.sh "package-tmp"
 
           test -f "package-tmp/${PLUGIN_SLUG}/build/admin.js"
           test -f "package-tmp/${PLUGIN_SLUG}/build/admin.asset.php"
