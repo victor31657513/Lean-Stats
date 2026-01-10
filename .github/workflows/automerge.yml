@@ -66,9 +66,4 @@ jobs:
             exit 0
           fi
 
-      - name: Déclencher le pipeline release
-        env:
-          GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN || github.token }}
-        run: |
-          set -euo pipefail
-          gh workflow run "Build deploy branch" --ref main
+          echo "Merged. Build deploy branch will run automatically on push to main, then Release plugin zip via workflow_run."
