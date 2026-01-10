@@ -101,14 +101,4 @@ jobs:
 
           git commit -m "Deploy build v${DEPLOY_VERSION}"
 
-          for attempt in 1 2 3; do
-            if git push --force-with-lease origin HEAD:deploy; then
-              exit 0
-            fi
-
-            echo "Push failed, retrying..."
-            sleep $((attempt * 2))
-          done
-
-          echo "Failed to update deploy branch after retries."
-          exit 1
+          git push --force-with-lease origin HEAD:deploy
