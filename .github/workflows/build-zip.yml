@@ -88,6 +88,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           set -euo pipefail
 
@@ -95,8 +96,23 @@ jobs:
           VERSION="${{ steps.meta.outputs.version }}"
           ZIP="dist/${{ steps.meta.outputs.zip_name }}"
 
-          # Notes de release : on préfère le titre de la PR si dispo, sinon fallback générique
-          if [ -n "${PR_TITLE:-}" ]; then
+          # Notes de release : on préfère le contenu de la PR, sinon fallback sur le titre, sinon générique
+          if [ -z "${PR_TITLE:-}" ] || [ -z "${PR_BODY:-}" ]; then
+            PR_DATA=$(gh api \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" \
+              | jq -r '.[0] // empty')
+            if [ -n "$PR_DATA" ]; then
+              PR_TITLE=$(echo "$PR_DATA" | jq -r '.title // empty')
+              PR_NUMBER=$(echo "$PR_DATA" | jq -r '.number // empty')
+              PR_BODY=$(echo "$PR_DATA" | jq -r '.body // empty')
+            fi
+          fi
+
+          if [ -n "${PR_BODY:-}" ]; then
+            NOTES="${PR_BODY}"
+          elif [ -n "${PR_TITLE:-}" ]; then
             NOTES="PR #${PR_NUMBER:-?} — ${PR_TITLE}"
           else
             NOTES="Build automatique Lean Stats ${VERSION}"
@@ -105,6 +121,7 @@ jobs:
           # Crée la release si elle n’existe pas (gh crée aussi le tag si besoin)
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists, will update asset."
+            gh release edit "$TAG" --notes "$NOTES"
           else
             gh release create "$TAG" \
               --title "Lean Stats $VERSION" \
