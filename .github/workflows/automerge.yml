@@ -40,10 +40,7 @@ jobs:
           fetch-depth: 1
 
       - name: Tenter l’auto-merge (ou mise en file d’attente)
-        env:
-          # WORKFLOW_TOKEN (PAT) permet de déclencher d'autres workflows via gh workflow run.
-          # GITHUB_TOKEN peut être insuffisant selon la configuration GitHub.
-          GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
+        env: GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
         run: |
           set -eo pipefail
           PR="${{ github.event.pull_request.number }}"
@@ -56,8 +53,7 @@ jobs:
           fi
 
       - name: Attendre le merge effectif
-        env:
-          GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
+        env: GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
         run: |
           set -euo pipefail
           PR="${{ github.event.pull_request.number }}"
